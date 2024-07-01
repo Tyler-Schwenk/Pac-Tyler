@@ -1,0 +1,3 @@
+CLIENT_ID = '128425'
+CLIENT_SECRET = '7fcb2ba525f5b99c2a6d80f510218ad8b5da914f'
+REDIRECT_URI = 'http://localhost:8080'
