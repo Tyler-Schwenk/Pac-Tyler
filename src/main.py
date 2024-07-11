@@ -4,8 +4,8 @@ import json
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-from src.strava_client import StravaClient, activities_to_geojson
-from src.config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
+from strava_client import StravaClient, activities_to_geojson
+from config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
