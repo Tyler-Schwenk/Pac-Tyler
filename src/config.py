@@ -1,3 +1,4 @@
-CLIENT_ID = '128425'
-CLIENT_SECRET = '7fcb2ba525f5b99c2a6d80f510218ad8b5da914f'
 REDIRECT_URI = 'http://localhost:8080'
+LAST_FETCH_FILE = "src/data/last_fetch.txt"
+GEOJSON_FILE = "src/data/activities.geojson"
+SPLIT_GEOJSON_FILE = "src/data/split_activities.geojson"

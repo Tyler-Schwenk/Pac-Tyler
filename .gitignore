@@ -17,6 +17,10 @@ venv/
 *.sqlite3
 *.db
 
+# Ignore bytecode and cache files
+__pycache__/
+*.pyc
+
 # Ignore Python package files
 *.egg
 *.egg-info/

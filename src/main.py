@@ -1,136 +1,74 @@
 import logging
 import webbrowser
-import json
-from datetime import datetime, timedelta
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
-from strava_client import StravaClient, activities_to_geojson
-from config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
+import os
+from datetime import datetime, timedelta, timezone
+from src.utils.strava_client import StravaClient, activities_to_geojson
+from src.utils.file_utils import load_existing_geojson, save_geojson
+from src.utils.separate_pauses import split_activities
+from src.utils.oauth_server import run_server
+from dotenv import load_dotenv
+from config import REDIRECT_URI
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-LAST_FETCH_FILE = "last_fetch.txt"
-GEOJSON_FILE = "activities.geojson"
-
-class OAuthCallbackHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        """
-        Handles the OAuth callback and extracts the authorization code from the URL.
-        """
-        parsed_path = urlparse(self.path)
-        query = parse_qs(parsed_path.query)
-        code = query.get('code', [None])[0]
-        
-        logging.info(f"Authorization code received: {code}")
-        
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'You can close this window now.')
-        
-        if code:
-            global authorization_code
-            authorization_code = code
-
-def run_server():
-    """
-    Runs a simple HTTP server to handle OAuth callbacks.
-    """
-    server_address = ('', 8080)
-    httpd = HTTPServer(server_address, OAuthCallbackHandler)
-    logging.info('Starting HTTP server for OAuth callback...')
-    httpd.handle_request()
-
-def save_geojson(geojson, filename=GEOJSON_FILE):
-    """
-    Saves the GeoJSON data to a file.
-
-    Args:
-        geojson (dict): The GeoJSON data to save.
-        filename (str): The name of the file to save the data to.
-    """
-    with open(filename, 'w') as f:
-        json.dump(geojson, f, indent=4)  # Use indent for a pretty-printed JSON
-
-def load_last_fetch_date():
-    """
-    Loads the last fetch date from a file.
-
-    Returns:
-        datetime: The last fetch date, or a default value of one year ago if the file doesn't exist.
-    """
-    try:
-        with open(LAST_FETCH_FILE, 'r') as f:
-            last_fetch = datetime.fromisoformat(f.read().strip())
-            logging.info(f"Last fetch date loaded: {last_fetch}")
-            return last_fetch
-    except FileNotFoundError:
-        one_year_ago = datetime.now() - timedelta(days=365)
-        logging.info(f"No last fetch date found. Defaulting to one year ago: {one_year_ago}")
-        return one_year_ago
-
-def save_last_fetch_date(date):
-    """
-    Saves the last fetch date to a file.
-
-    Args:
-        date (datetime): The date to save.
-    """
-    with open(LAST_FETCH_FILE, 'w') as f:
-        f.write(date.isoformat())
-        logging.info(f"Last fetch date saved: {date}")
-
-def load_existing_geojson(filename=GEOJSON_FILE):
-    """
-    Loads the existing GeoJSON data from a file.
-
-    Args:
-        filename (str): The name of the file to load the data from.
-
-    Returns:
-        dict: The loaded GeoJSON data, or a new GeoJSON structure if the file doesn't exist.
-    """
-    try:
-        with open(filename, 'r') as f:
-            geojson = json.load(f)
-            logging.info(f"Loaded existing GeoJSON file with {len(geojson['features'])} features.")
-            return geojson
-    except FileNotFoundError:
-        logging.info("No existing GeoJSON file found. Creating a new one.")
-        return {"type": "FeatureCollection", "features": []}
+load_dotenv()  
+client_id = os.getenv("CLIENT_ID")
+client_secret = os.getenv("CLIENT_SECRET")
 
 def main():
-    """
-    Main function to run the Strava data fetch and save the results to a GeoJSON file.
-    """
-    strava = StravaClient(client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI)
+    strava = StravaClient(client_id=client_id, client_secret=client_secret, redirect_uri=REDIRECT_URI)
     url = strava.get_authorization_url()
-    print(f"Visit this URL and authorize the application: {url}")
+    logging.info(f"Visit this URL and authorize the application: {url}")
     webbrowser.open_new(url)
-    run_server()
+    authorization_code = run_server()
     
     strava.authenticate(authorization_code)
 
-    last_fetch_date = load_last_fetch_date()
-    activities = strava.fetch_detailed_activities(start_date=last_fetch_date)
-
-    if activities:
-        # Update the last fetch date to the date of the last fetched activity
-        new_last_fetch_date = activities[-1]['date']
-        save_last_fetch_date(new_last_fetch_date)
-
-        # Load existing GeoJSON data
-        existing_geojson = load_existing_geojson()
-        
-        # Convert new activities to GeoJSON and append to existing data
-        new_geojson = activities_to_geojson(activities)
-        existing_geojson['features'].extend(new_geojson['features'])
-        
-        # Save the updated GeoJSON data
-        save_geojson(existing_geojson)
-        print("GeoJSON file has been updated with new activities.")
+    # Load existing GeoJSON and get the most recent activity date
+    existing_geojson = load_existing_geojson()
+    if existing_geojson['features']:
+        # Find the most recent date in the existing GeoJSON
+        most_recent_activity_date = max(
+            datetime.fromisoformat(feature['properties']['date']) 
+            for feature in existing_geojson['features']
+        )
+        logging.info(f"Existing geojson found, downloading activities since: {most_recent_activity_date}")
     else:
-        print("No new activities found.")
+        # Default to one year ago if no existing data
+        logging.info("No existing geojson found, downloading all activites from past year")
+        most_recent_activity_date = datetime.now() - timedelta(days=365)
+
+    # Initialize the combined GeoJSON with existing features
+    combined_geojson = {"type": "FeatureCollection", "features": existing_geojson['features']}
+    batch_size = 5
+    new_activities_fetched = True  # Initialize flag
+
+    # Adjust most_recent_activity_date to be timezone-aware if not already
+    if most_recent_activity_date.tzinfo is None:
+        most_recent_activity_date = most_recent_activity_date.replace(tzinfo=timezone.utc)
+
+    while new_activities_fetched:
+        # Fetch a batch of new activities
+        activities = strava.fetch_detailed_activities_batch(start_date=most_recent_activity_date, batch_size=batch_size)
+        
+        # Check if any activities were fetched; if not, exit the loop
+        if not activities:
+            logging.info("No more new activities found.")
+            break
+
+        # Convert the batch of activities to GeoJSON format and add to combined GeoJSON
+        batch_geojson = activities_to_geojson(activities)
+        combined_geojson['features'].extend(batch_geojson['features'])
+        
+        # Split the activities if necessary and save after each batch
+        final_geojson = split_activities(combined_geojson, threshold_km=0.5)
+        save_geojson(final_geojson)
+        logging.info(f"Saved batch of {len(activities)} activities to GeoJSON.")
+        
+        # Update the most recent date with the last activity's date + 1 second
+        most_recent_activity_date = max(activity['date'] for activity in activities) + timedelta(seconds=1)
+    
+    logging.info("Finished updating the GeoJSON with all fetched activities.")
 
 if __name__ == '__main__':
     main()
