@@ -11,8 +11,15 @@
     <a href="https://github.com/Tyler-Schwenk/Pac-Tyler/pulls"><img alt="Pull requests Badge" src="https://img.shields.io/github/issues-pr/Tyler-Schwenk/Pac-Tyler"></a>
 </p>
 
-Tracking my attempt to run/bike the length of every street in San Diego. Inspired by Pac-Tom: https://www.youtube.com/watch?v=1c8i5SABqwU
+## Overview
 
-the script automates the data retrieval process so the user only needs to log in and give authentication permission.
+Tracking my attempt to run/bike the length of every street in San Diego. Inspired by Pac-Tom: [Watch Here](https://www.youtube.com/watch?v=1c8i5SABqwU).
 
-The script downloads all activities, resampling to use fewer GPS points for a more manageable file size.
+## How It Works
+
+This script automates the data retrieval process, so the user only needs to log in to Strava and grant authentication permission.
+
+### Features
+- **Automated Data Retrieval**: The script downloads all activities from Strava, resampling to use fewer GPS points for a more manageable file size.
+- **Idempotent Updates**: New activities are automatically added without duplicating data.
+- **Error Correction**: The script cleans errors in the data provided by Strava. If a user pauses their activity, moves, and then unpauses, it may draw a straight line between the points, creating a false path. The script identifies and removes these false paths.
