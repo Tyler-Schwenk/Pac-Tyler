@@ -13,7 +13,9 @@
 
 ## Overview
 
-Tracking my attempt to run/bike the length of every street in San Diego. Inspired by Pac-Tom: [Watch Here](https://www.youtube.com/watch?v=1c8i5SABqwU).
+Tracking my attempt to run/bike the length of every street in San Diego. Current progress [Here](https://tyler-schwenk.github.io/map.html).
+
+Inspired by Pac-Tom: [Watch Here](https://www.youtube.com/watch?v=1c8i5SABqwU).
 
 ## How It Works
 
