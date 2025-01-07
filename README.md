@@ -13,7 +13,7 @@
 
 ## Overview
 
-Tracking my attempt to run/bike the length of every street in San Diego. Current progress [Here](https://tyler-schwenk.github.io/map.html).
+Tracking my attempt to run/bike the length of every street in San Diego. Current progress [Here](https://tyler-schwenk.github.io/pac-tyler.html).
 
 Inspired by Pac-Tom: [Watch Here](https://www.youtube.com/watch?v=1c8i5SABqwU).
 
