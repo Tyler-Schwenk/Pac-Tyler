@@ -1,4 +1,8 @@
-# Pac-Tyler
+<p align="center">
+  <img src="logo-Pac-Tyler.png" alt="Pac-Tyler Logo" width="700"/>
+</p>
+
+
 
 <p align="center">
 <!--     <a href="https://github.com/Tyler-Schwenk/Pac-Tyler/actions"><img alt="CI Status" src="https://github.com/Tyler-Schwenk/Pac-Tyler/actions/workflows/ci.yaml/badge.svg?branch=main"></a>
